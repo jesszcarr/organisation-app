@@ -12,7 +12,7 @@ import { BottomNav } from '@/components/app/BottomNav'
 import { Toaster } from '@/components/ui/sonner'
 import { toast } from 'sonner'
 import { Search, X } from 'lucide-react'
-import {Project} from '@/types/database'
+
 
 type FilterMode = 'category' | 'tag'
 
