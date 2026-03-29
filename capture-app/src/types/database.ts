@@ -62,7 +62,7 @@ export interface ItemTag {
   tag_id: string
 }
 
-export type TrackType = 'binary' | 'numeric'
+export type TrackType = 'binary' | 'numeric' | 'three_level'
 
 export interface Habit {
   id: string
@@ -73,6 +73,7 @@ export interface Habit {
   unit: string | null
   active: boolean
   sort_order: number
+  exercise_tags: string[]
   created_at: string
 }
 
@@ -107,12 +108,12 @@ export const DEFAULT_CATEGORIES: Omit<Category, 'id' | 'user_id' | 'created_at'>
 ]
 
 export const DEFAULT_HABITS: Omit<Habit, 'id' | 'user_id' | 'created_at'>[] = [
-  { name: 'Running', emoji: '🏃', track_type: 'numeric', unit: 'km', active: true, sort_order: 0 },
-  { name: 'Gym', emoji: '💪', track_type: 'binary', unit: null, active: true, sort_order: 1 },
-  { name: 'Piano', emoji: '🎹', track_type: 'numeric', unit: 'mins', active: true, sort_order: 2 },
-  { name: 'graphfm', emoji: '📊', track_type: 'numeric', unit: 'hrs', active: true, sort_order: 3 },
-  { name: 'Dev interp', emoji: '📖', track_type: 'numeric', unit: 'hrs', active: true, sort_order: 4 },
-  { name: 'FLAIR/quant', emoji: '📈', track_type: 'numeric', unit: 'hrs', active: true, sort_order: 5 },
+  { name: 'Cardio', emoji: '🏃', track_type: 'numeric', unit: 'km', active: true, sort_order: 0, exercise_tags: [] },
+  { name: 'Strength Training', emoji: '💪', track_type: 'binary', unit: null, active: true, sort_order: 1, exercise_tags: ['Bench press', 'Deadlift', 'Squat', 'Pull-up', 'Row', 'Shoulder press', 'Bicep curl', 'Tricep extension'] },
+  { name: 'Stretching', emoji: '🧘', track_type: 'binary', unit: null, active: true, sort_order: 2, exercise_tags: [] },
+  { name: 'graphfm', emoji: '📊', track_type: 'three_level', unit: null, active: true, sort_order: 3, exercise_tags: [] },
+  { name: 'Dev interp', emoji: '📖', track_type: 'three_level', unit: null, active: true, sort_order: 4, exercise_tags: [] },
+  { name: 'FLAIR/quant', emoji: '📈', track_type: 'three_level', unit: null, active: true, sort_order: 5, exercise_tags: [] },
 ]
 
 export const DEFAULT_PROJECTS: Omit<Project, 'id' | 'user_id' | 'created_at' | 'updated_at'>[] = [

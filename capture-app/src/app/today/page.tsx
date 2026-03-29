@@ -132,6 +132,7 @@ export default function TodayPage() {
     const val = logLookup[habit.id]?.[dateStr]
     if (val === undefined) return '—'
     if (habit.track_type === 'binary') return '✓'
+    if (habit.track_type === 'three_level') return val === 2 ? '●●' : val === 1 ? '●' : '—'
     return `${val}${habit.unit ?? ''}`
   }
 
@@ -261,13 +262,36 @@ export default function TodayPage() {
                     const val = logLookup[habit.id]?.[ds]
                     const isDone = val !== undefined
                     const isCurrent = ds === dateStr
+                    const isThree = habit.track_type === 'three_level'
+
+                    let cellClass: string
+                    let cellContent: React.ReactNode
+
+                    if (isThree) {
+                      if (val === 2) {
+                        cellClass = isCurrent
+                          ? 'bg-emerald-600 text-white'
+                          : 'bg-emerald-300 dark:bg-emerald-700 text-emerald-900 dark:text-emerald-100'
+                        cellContent = '●●'
+                      } else if (val === 1) {
+                        cellClass = isCurrent
+                          ? 'bg-emerald-300 text-emerald-900'
+                          : 'bg-emerald-100 dark:bg-emerald-900 text-emerald-600 dark:text-emerald-400'
+                        cellContent = '●'
+                      } else {
+                        cellClass = isCurrent ? 'border-2 border-muted-foreground/30 bg-background' : 'bg-muted'
+                        cellContent = ''
+                      }
+                    } else {
+                      cellClass = isDone
+                        ? isCurrent ? 'bg-emerald-500 text-white' : 'bg-emerald-100 dark:bg-emerald-900 text-emerald-700 dark:text-emerald-300'
+                        : isCurrent ? 'border-2 border-muted-foreground/30 bg-background' : 'bg-muted'
+                      cellContent = isDone && habit.track_type === 'binary' ? '✓' : isDone && val !== undefined ? Math.round(val) : ''
+                    }
+
                     return (
-                      <div key={i} className={`w-7 h-7 rounded-sm flex items-center justify-center text-[10px] ${
-                        isDone
-                          ? isCurrent ? 'bg-emerald-500 text-white' : 'bg-emerald-100 dark:bg-emerald-900 text-emerald-700 dark:text-emerald-300'
-                          : isCurrent ? 'border-2 border-muted-foreground/30 bg-background' : 'bg-muted'
-                      }`}>
-                        {isDone && habit.track_type === 'binary' ? '✓' : isDone ? Math.round(val) : ''}
+                      <div key={i} className={`w-7 h-7 rounded-sm flex items-center justify-center text-[10px] ${cellClass}`}>
+                        {cellContent}
                       </div>
                     )
                   })}
