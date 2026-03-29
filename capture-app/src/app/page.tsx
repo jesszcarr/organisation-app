@@ -7,12 +7,10 @@ import { matchKeywordRules } from '@/lib/categorize'
 import { createClient } from '@/lib/supabase/client'
 import { ChatInput } from '@/components/app/ChatInput'
 import { MessageBubble } from '@/components/app/MessageBubble'
-import { CategoryFilter } from '@/components/app/CategoryFilter'
 import { BottomNav } from '@/components/app/BottomNav'
 import { Toaster } from '@/components/ui/sonner'
 import { toast } from 'sonner'
 import { Search, X } from 'lucide-react'
-
 
 type FilterMode = 'category' | 'tag'
 
@@ -31,7 +29,7 @@ export default function Home() {
   const [searching, setSearching] = useState(false)
   const [showSearch, setShowSearch] = useState(false)
   const bottomRef = useRef<HTMLDivElement>(null)
-  const searchTimeout = useRef<NodeJS.Timeout>(null)
+  const searchTimeout = useRef<NodeJS.Timeout | null>(null)
 
   useEffect(() => {
     const supabase = createClient()
@@ -64,14 +62,16 @@ export default function Home() {
       if (!selectedCategory && !selectedTag) loadData()
       return
     }
-    clearTimeout(searchTimeout.current)
+    if (searchTimeout.current) clearTimeout(searchTimeout.current)
     searchTimeout.current = setTimeout(async () => {
       setSearching(true)
       const res = await fetch(`/api/items?search=${encodeURIComponent(searchQuery)}`)
       if (res.ok) setItems(await res.json())
       setSearching(false)
     }, 300)
-    return () => clearTimeout(searchTimeout.current)
+    return () => {
+      if (searchTimeout.current) clearTimeout(searchTimeout.current)
+    }
   }, [searchQuery, selectedCategory, selectedTag, loadData])
 
   // Filter
@@ -140,16 +140,6 @@ export default function Home() {
     }
   }
 
-  async function handleReassign(itemId: string, categoryId: string) {
-    const category = categories.find((c) => c.id === categoryId)
-    setItems((prev) => prev.map((i) => (i.id === itemId ? { ...i, category_id: categoryId, category } : i)))
-    const res = await fetch(`/api/items/${itemId}`, {
-      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ category_id: categoryId }),
-    })
-    if (!res.ok) { toast.error('Failed to update'); loadData() }
-  }
-
   async function handleDelete(itemId: string) {
     setItems((prev) => prev.filter((i) => i.id !== itemId))
     const res = await fetch(`/api/items/${itemId}`, { method: 'DELETE' })
@@ -168,8 +158,7 @@ export default function Home() {
     ))
   }
 
-async function handleConvert(itemId: string, updates: Record<string, unknown>) {
-    // Optimistic update
+  async function handleConvert(itemId: string, updates: Record<string, unknown>) {
     setItems((prev) => prev.map((i) => {
       if (i.id !== itemId) return i
       const updated = { ...i, ...updates }
@@ -183,13 +172,7 @@ async function handleConvert(itemId: string, updates: Record<string, unknown>) {
       method: 'PATCH', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify(updates.project_id === '' ? { ...updates, project_id: null } : updates),
     })
-    // Reload to get fresh joined data
     loadData()
-  }
-
-  const itemCounts: Record<string, number> = {}
-  for (const item of items) {
-    if (item.category_id) itemCounts[item.category_id] = (itemCounts[item.category_id] ?? 0) + 1
   }
 
   return (
@@ -214,10 +197,8 @@ async function handleConvert(itemId: string, updates: Record<string, unknown>) {
         )}
       </header>
 
-      {/* Filter bar: categories + tags in one row */}
       {!showSearch && (
         <div className="flex gap-1.5 px-4 py-2 overflow-x-auto border-b shrink-0">
-          {/* Mode toggles */}
           <button onClick={() => { setFilterMode('category'); setSelectedTag(null); setSelectedCategory(null) }}
             className={`text-xs px-2.5 py-1 rounded-full shrink-0 font-medium ${filterMode === 'category' && !selectedCategory && !selectedTag ? 'bg-foreground text-background' : 'bg-muted text-muted-foreground'}`}>
             All
@@ -231,9 +212,7 @@ async function handleConvert(itemId: string, updates: Record<string, unknown>) {
                   {cat.emoji} {cat.name}
                 </button>
               ))}
-              {tags.length > 0 && (
-                <div className="w-px bg-border shrink-0 mx-1" />
-              )}
+              {tags.length > 0 && <div className="w-px bg-border shrink-0 mx-1" />}
               {tags.map((tag) => (
                 <button key={tag.id} onClick={() => { setFilterMode('tag'); setSelectedTag(tag.name); setSelectedCategory(null) }}
                   className={`text-xs px-2.5 py-1 rounded-full shrink-0 whitespace-nowrap ${selectedTag === tag.name ? 'bg-foreground text-background' : 'bg-muted/70 text-muted-foreground italic'}`}>
@@ -249,9 +228,7 @@ async function handleConvert(itemId: string, updates: Record<string, unknown>) {
                   {tag.name}
                 </button>
               ))}
-              {categories.filter(c => !c.parent_id).length > 0 && (
-                <div className="w-px bg-border shrink-0 mx-1" />
-              )}
+              {categories.filter(c => !c.parent_id).length > 0 && <div className="w-px bg-border shrink-0 mx-1" />}
               {categories.filter(c => !c.parent_id).map((cat) => (
                 <button key={cat.id} onClick={() => { setFilterMode('category'); setSelectedCategory(cat.id); setSelectedTag(null) }}
                   className={`text-xs px-2.5 py-1 rounded-full shrink-0 whitespace-nowrap ${selectedCategory === cat.id ? 'bg-foreground text-background' : 'bg-muted/70 text-muted-foreground'}`}>
