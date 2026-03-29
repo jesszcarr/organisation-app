@@ -31,7 +31,7 @@ export default function Home() {
   const [searching, setSearching] = useState(false)
   const [showSearch, setShowSearch] = useState(false)
   const bottomRef = useRef<HTMLDivElement>(null)
-  const searchTimeout = useRef<NodeJS.Timeout>()
+  const searchTimeout = useRef<NodeJS.Timeout>(null)
 
   useEffect(() => {
     const supabase = createClient()
