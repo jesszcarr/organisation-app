@@ -270,7 +270,8 @@ export default function SettingsPage() {
 
   function trackTypeLabel(h: Habit) {
     if (h.track_type === 'binary') return 'Yes/No'
-    if (h.track_type === 'three_level') return 'Shallow/Deep'
+    if (h.track_type === 'three_level') return 'High/Low'
+    if (h.track_type === 'text') return 'Free text'
     return h.unit || 'numeric'
   }
 
@@ -433,7 +434,8 @@ export default function SettingsPage() {
                 <select value={newHabitType} onChange={e => setNewHabitType(e.target.value)} className="text-sm border rounded-md px-3 py-2 bg-background">
                   <option value="binary">Yes / No</option>
                   <option value="numeric">Numeric</option>
-                  <option value="three_level">Shallow / Deep</option>
+                  <option value="three_level">High / Low</option>
+                  <option value="text">Free text</option>
                 </select>
                 {newHabitType === 'numeric' && (
                   <Input value={newHabitUnit} onChange={e => setNewHabitUnit(e.target.value)} placeholder="Unit (km, mins, hrs)" className="flex-1" />

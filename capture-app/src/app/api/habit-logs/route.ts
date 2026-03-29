@@ -5,14 +5,14 @@ export async function POST(request: NextRequest) {
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (!user) return NextResponse.json({ error: 'Unauthorised' }, { status: 401 })
-  const { habit_id, log_date, value } = await request.json()
+  const { habit_id, log_date, value, note } = await request.json()
   if (!habit_id || !log_date || value === undefined) return NextResponse.json({ error: 'Missing fields' }, { status: 400 })
   // Verify ownership
   const { data: habit } = await supabase.from('habits').select('id').eq('id', habit_id).eq('user_id', user.id).single()
   if (!habit) return NextResponse.json({ error: 'Habit not found' }, { status: 404 })
   const { data, error } = await supabase
     .from('habit_logs')
-    .upsert({ habit_id, log_date, value }, { onConflict: 'habit_id,log_date' })
+    .upsert({ habit_id, log_date, value, note: note ?? null }, { onConflict: 'habit_id,log_date' })
     .select().single()
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   return NextResponse.json(data)

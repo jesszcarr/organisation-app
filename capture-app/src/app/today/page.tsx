@@ -53,6 +53,7 @@ export default function TodayPage() {
   const [hiddenHabits, setHiddenHabits] = useState<Set<string>>(new Set())
   const [showHabitSettings, setShowHabitSettings] = useState(false)
   const [numericEdit, setNumericEdit] = useState<{ habitId: string; date: string; value: string } | null>(null)
+  const [textEdit, setTextEdit] = useState<{ habitId: string; date: string; value: string } | null>(null)
 
   const dateStr = formatDate(currentDate)
   const weekDates = getWeekDates(currentDate)
@@ -113,7 +114,7 @@ export default function TodayPage() {
     })
   }
 
-  async function logHabit(habitId: string, date: string, value: number | null) {
+  async function logHabit(habitId: string, date: string, value: number | null, note?: string) {
     // Optimistic update
     if (value === null) {
       setHabitLogs(prev => prev.filter(l => !(l.habit_id === habitId && l.log_date === date)))
@@ -121,13 +122,13 @@ export default function TodayPage() {
     } else {
       setHabitLogs(prev => {
         const existing = prev.find(l => l.habit_id === habitId && l.log_date === date)
-        if (existing) return prev.map(l => l.habit_id === habitId && l.log_date === date ? { ...l, value } : l)
-        return [...prev, { id: `temp-${habitId}-${date}`, habit_id: habitId, item_id: null, log_date: date, value, note: null, created_at: new Date().toISOString() }]
+        if (existing) return prev.map(l => l.habit_id === habitId && l.log_date === date ? { ...l, value, note: note ?? l.note } : l)
+        return [...prev, { id: `temp-${habitId}-${date}`, habit_id: habitId, item_id: null, log_date: date, value, note: note ?? null, created_at: new Date().toISOString() }]
       })
       await fetch('/api/habit-logs', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ habit_id: habitId, log_date: date, value }),
+        body: JSON.stringify({ habit_id: habitId, log_date: date, value, note: note ?? null }),
       })
     }
   }
@@ -139,8 +140,13 @@ export default function TodayPage() {
     } else if (habit.track_type === 'three_level') {
       const next = val === undefined ? 1 : val === 1 ? 2 : null
       logHabit(habit.id, date, next)
+    } else if (habit.track_type === 'text') {
+      const existingNote = habitLogs.find(l => l.habit_id === habit.id && l.log_date === date)?.note ?? ''
+      setTextEdit({ habitId: habit.id, date, value: existingNote })
+      setNumericEdit(null)
     } else {
       setNumericEdit({ habitId: habit.id, date, value: val !== undefined ? String(val) : '' })
+      setTextEdit(null)
     }
   }
 
@@ -149,6 +155,13 @@ export default function TodayPage() {
     const trimmed = numericEdit.value.trim()
     await logHabit(numericEdit.habitId, numericEdit.date, trimmed === '' || isNaN(parseFloat(trimmed)) ? null : parseFloat(trimmed))
     setNumericEdit(null)
+  }
+
+  async function submitText() {
+    if (!textEdit) return
+    const trimmed = textEdit.value.trim()
+    await logHabit(textEdit.habitId, textEdit.date, trimmed === '' ? null : 1, trimmed || undefined)
+    setTextEdit(null)
   }
 
   // Merge created + completed, deduplicate
@@ -174,6 +187,10 @@ export default function TodayPage() {
     if (val === undefined) return '—'
     if (habit.track_type === 'binary') return '✓'
     if (habit.track_type === 'three_level') return val === 2 ? '●●' : val === 1 ? '●' : '—'
+    if (habit.track_type === 'text') {
+      const note = habitLogs.find(l => l.habit_id === habit.id && l.log_date === dateStr)?.note ?? ''
+      return note ? (note.length > 14 ? note.slice(0, 13) + '…' : note) : '—'
+    }
     return `${val}${habit.unit ?? ''}`
   }
 
@@ -299,6 +316,33 @@ export default function TodayPage() {
               )
             })()}
 
+            {/* Text input panel */}
+            {textEdit && (() => {
+              const habit = habits.find(h => h.id === textEdit.habitId)
+              const label = new Intl.DateTimeFormat('en-GB', { weekday: 'short', day: 'numeric', month: 'short' }).format(new Date(textEdit.date + 'T12:00:00'))
+              return (
+                <div className="mb-3 p-3 rounded-lg border bg-muted/30 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">{habit?.emoji} {habit?.name} — {label}</span>
+                    <button onClick={() => setTextEdit(null)} className="text-muted-foreground hover:text-foreground p-1 shrink-0">
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                  <textarea value={textEdit.value}
+                    onChange={e => setTextEdit(prev => prev ? { ...prev, value: e.target.value } : null)}
+                    onKeyDown={e => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submitText() } if (e.key === 'Escape') setTextEdit(null) }}
+                    placeholder="Add a note…" rows={2}
+                    className="w-full text-sm border rounded-md px-3 py-2 bg-background resize-none outline-none focus:ring-1 focus:ring-ring" autoFocus />
+                  <div className="flex gap-2 justify-end">
+                    {logLookup[textEdit.habitId]?.[textEdit.date] !== undefined && (
+                      <Button size="sm" variant="outline" onClick={() => { logHabit(textEdit.habitId, textEdit.date, null); setTextEdit(null) }} className="h-7 px-2 text-xs">Clear</Button>
+                    )}
+                    <Button size="sm" onClick={submitText} className="h-7 px-3 text-xs">Save</Button>
+                  </div>
+                </div>
+              )
+            })()}
+
             {/* Day headers */}
             <div className="flex items-center mb-1">
               <div className="flex-1" />
@@ -342,6 +386,11 @@ export default function TodayPage() {
                         cellClass = isCurrent ? 'border-2 border-muted-foreground/30 bg-background' : 'bg-muted'
                         cellContent = ''
                       }
+                    } else if (habit.track_type === 'text') {
+                      cellClass = isDone
+                        ? isCurrent ? 'bg-violet-500 text-white' : 'bg-violet-100 dark:bg-violet-900 text-violet-700 dark:text-violet-300'
+                        : isCurrent ? 'border-2 border-muted-foreground/30 bg-background' : 'bg-muted'
+                      cellContent = isDone ? '✎' : ''
                     } else {
                       cellClass = isDone
                         ? isCurrent ? 'bg-emerald-500 text-white' : 'bg-emerald-100 dark:bg-emerald-900 text-emerald-700 dark:text-emerald-300'

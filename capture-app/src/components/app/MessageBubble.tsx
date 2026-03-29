@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { Item, Category, Project, Tag, Habit } from '@/types/database'
 import { Badge } from '@/components/ui/badge'
-import { Trash2, Plus, Check, CheckSquare, FolderOpen } from 'lucide-react'
+import { Trash2, Plus, Check, CheckSquare, FolderOpen, Pencil } from 'lucide-react'
 
 interface MessageBubbleProps {
   item: Item & { category?: Category; project?: Project; pending_habit?: Habit; tags?: Tag[] }
@@ -28,6 +28,8 @@ export function MessageBubble({ item, allTags, allProjects, onDelete, onTagClick
   const [showMenu, setShowMenu] = useState(false)
   const [showTagPicker, setShowTagPicker] = useState(false)
   const [showProjectPicker, setShowProjectPicker] = useState(false)
+  const [editMode, setEditMode] = useState(false)
+  const [editContent, setEditContent] = useState('')
 
   const formattedDate = new Intl.DateTimeFormat('en-GB', {
     month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit',
@@ -65,16 +67,52 @@ export function MessageBubble({ item, allTags, allProjects, onDelete, onTagClick
     setShowMenu(false)
   }
 
+  function startEdit() {
+    setEditContent(item.content)
+    setEditMode(true)
+    setShowMenu(false)
+  }
+
+  async function saveEdit() {
+    const trimmed = editContent.trim()
+    if (!trimmed || trimmed === item.content) { setEditMode(false); return }
+    onConvert?.(item.id, { content: trimmed })
+    await fetch(`/api/items/${item.id}`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ content: trimmed }),
+    })
+    setEditMode(false)
+  }
+
   return (
     <div className="flex flex-col items-end gap-1 group relative">
       <div className="flex items-start gap-1.5 justify-end w-full">
-        <button onClick={() => onDelete(item.id)}
-          className="opacity-30 group-hover:opacity-100 transition-opacity p-1.5 mt-1 text-muted-foreground hover:text-destructive shrink-0" title="Delete">
-          <Trash2 className="w-3.5 h-3.5" />
-        </button>
-        <div className="max-w-[85%] rounded-2xl rounded-tr-sm bg-primary text-primary-foreground px-4 py-2.5 shadow-sm">
-          <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">{item.content}</p>
-        </div>
+        {!editMode && (
+          <button onClick={() => onDelete(item.id)}
+            className="opacity-30 group-hover:opacity-100 transition-opacity p-1.5 mt-1 text-muted-foreground hover:text-destructive shrink-0" title="Delete">
+            <Trash2 className="w-3.5 h-3.5" />
+          </button>
+        )}
+        {editMode ? (
+          <div className="flex-1 max-w-[85%] flex flex-col gap-1.5">
+            <textarea
+              value={editContent}
+              onChange={(e) => setEditContent(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); saveEdit() } if (e.key === 'Escape') setEditMode(false) }}
+              autoFocus
+              rows={3}
+              className="w-full rounded-2xl rounded-tr-sm bg-primary text-primary-foreground px-4 py-2.5 text-sm leading-relaxed resize-none outline-none placeholder:text-primary-foreground/50"
+            />
+            <div className="flex gap-2 justify-end">
+              <button onClick={() => setEditMode(false)} className="text-xs text-muted-foreground hover:text-foreground px-2 py-1">Cancel</button>
+              <button onClick={saveEdit} className="text-xs bg-primary text-primary-foreground px-3 py-1 rounded-full hover:bg-primary/90">Save</button>
+            </div>
+          </div>
+        ) : (
+          <div className="max-w-[85%] rounded-2xl rounded-tr-sm bg-primary text-primary-foreground px-4 py-2.5 shadow-sm">
+            <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">{item.content}</p>
+          </div>
+        )}
       </div>
 
       <div className="flex items-center gap-1.5 px-1 flex-wrap justify-end">
@@ -119,6 +157,10 @@ export function MessageBubble({ item, allTags, allProjects, onDelete, onTagClick
 
             {showMenu && !showTagPicker && !showProjectPicker && (
               <div className="absolute right-0 bottom-6 z-50 w-48 bg-background border rounded-lg shadow-lg py-1">
+                <button onClick={startEdit}
+                  className="flex items-center gap-2 w-full px-3 py-2 text-sm hover:bg-accent text-left">
+                  <Pencil className="w-3.5 h-3.5" /> Edit
+                </button>
                 <button onClick={() => { setShowTagPicker(true) }}
                   className="flex items-center gap-2 w-full px-3 py-2 text-sm hover:bg-accent text-left">
                   <Plus className="w-3.5 h-3.5" /> Edit tags

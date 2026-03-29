@@ -63,7 +63,7 @@ export interface ItemTag {
   tag_id: string
 }
 
-export type TrackType = 'binary' | 'numeric' | 'three_level'
+export type TrackType = 'binary' | 'numeric' | 'three_level' | 'text'
 
 export interface Habit {
   id: string

@@ -9,7 +9,7 @@ import { ChatInput } from '../../../../src/components/app/ChatInput'
 import { BottomNav } from '../../../../src/components/app/BottomNav'
 import { Toaster } from '../../../../src/components/ui/sonner'
 import { toast } from 'sonner'
-import { ArrowLeft, Plus, ExternalLink, Trash2, MessageCircle, Link2, FileText, GitBranch } from 'lucide-react'
+import { ArrowLeft, Plus, ExternalLink, Trash2, MessageCircle, Link2, FileText, GitBranch, Pencil } from 'lucide-react'
 
 const LINK_ICONS: Record<string, typeof MessageCircle> = {
   chat: MessageCircle,
@@ -29,6 +29,8 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
   const [newLinkTitle, setNewLinkTitle] = useState('')
   const [newLinkType, setNewLinkType] = useState<string>('other')
   const [projectId, setProjectId] = useState<string>('')
+  const [editingItemId, setEditingItemId] = useState<string | null>(null)
+  const [editingItemContent, setEditingItemContent] = useState('')
 
   useEffect(() => {
     params.then(({ id }) => {
@@ -102,6 +104,23 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
     } else {
       toast.error('Failed to add link')
     }
+  }
+
+  async function handleDeleteItem(itemId: string) {
+    setItems((prev) => prev.filter((i) => i.id !== itemId))
+    const res = await fetch(`/api/items/${itemId}`, { method: 'DELETE' })
+    if (!res.ok) { toast.error('Failed to delete'); loadProject() }
+  }
+
+  async function saveItemEdit(itemId: string) {
+    const trimmed = editingItemContent.trim()
+    if (!trimmed) { setEditingItemId(null); return }
+    setItems((prev) => prev.map((i) => i.id === itemId ? { ...i, content: trimmed } : i))
+    setEditingItemId(null)
+    await fetch(`/api/items/${itemId}`, {
+      method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ content: trimmed }),
+    })
   }
 
   async function handleDeleteLink(linkId: string) {
@@ -241,15 +260,46 @@ export default function ProjectDetailPage({ params }: { params: Promise<{ id: st
                 <p className="text-sm text-muted-foreground py-4 text-center">No updates yet — type below to add one</p>
               )}
               {items.map((item) => (
-                <div key={item.id} className="flex flex-col items-end gap-1">
-                  <div className="max-w-[85%] rounded-2xl rounded-tr-sm bg-primary text-primary-foreground px-4 py-2.5 shadow-sm">
-                    <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">
-                      {item.content}
-                    </p>
+                <div key={item.id} className="flex flex-col items-end gap-1 group">
+                  <div className="flex items-start gap-1.5 justify-end w-full">
+                    {editingItemId !== item.id && (
+                      <button onClick={() => handleDeleteItem(item.id)}
+                        className="opacity-30 group-hover:opacity-100 transition-opacity p-1.5 mt-1 text-muted-foreground hover:text-destructive shrink-0" title="Delete">
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                    {editingItemId === item.id ? (
+                      <div className="flex-1 max-w-[85%] flex flex-col gap-1.5">
+                        <textarea
+                          value={editingItemContent}
+                          onChange={(e) => setEditingItemContent(e.target.value)}
+                          onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); saveItemEdit(item.id) } if (e.key === 'Escape') setEditingItemId(null) }}
+                          autoFocus
+                          rows={3}
+                          className="w-full rounded-2xl rounded-tr-sm bg-primary text-primary-foreground px-4 py-2.5 text-sm leading-relaxed resize-none outline-none"
+                        />
+                        <div className="flex gap-2 justify-end">
+                          <button onClick={() => setEditingItemId(null)} className="text-xs text-muted-foreground hover:text-foreground px-2 py-1">Cancel</button>
+                          <button onClick={() => saveItemEdit(item.id)} className="text-xs bg-primary text-primary-foreground px-3 py-1 rounded-full hover:bg-primary/90">Save</button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="max-w-[85%] rounded-2xl rounded-tr-sm bg-primary text-primary-foreground px-4 py-2.5 shadow-sm">
+                        <p className="text-sm leading-relaxed whitespace-pre-wrap break-words">{item.content}</p>
+                      </div>
+                    )}
                   </div>
-                  <span className="text-xs text-muted-foreground px-1">
-                    {formattedDate(item.created_at)}
-                  </span>
+                  <div className="flex items-center gap-2 px-1">
+                    <span className="text-xs text-muted-foreground opacity-60 group-hover:opacity-100 transition-opacity">
+                      {formattedDate(item.created_at)}
+                    </span>
+                    {editingItemId !== item.id && (
+                      <button onClick={() => { setEditingItemId(item.id); setEditingItemContent(item.content) }}
+                        className="opacity-30 group-hover:opacity-100 transition-opacity p-0.5 text-muted-foreground hover:text-foreground">
+                        <Pencil className="w-3 h-3" />
+                      </button>
+                    )}
+                  </div>
                 </div>
               ))}
             </div>
