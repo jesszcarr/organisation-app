@@ -21,6 +21,7 @@ export interface Item {
   completed_at: string | null
   created_at: string
   categorized_by: 'keyword' | 'ai' | 'manual'
+  priority: 'today' | 'later' | null
   category?: Category
   project?: Project
   pending_habit?: Habit

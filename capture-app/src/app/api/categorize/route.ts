@@ -62,6 +62,7 @@ export async function POST(request: NextRequest) {
       habits: parsed.habits || [],
       pending_habit_id: pendingHabitId,
       tags: filteredTags,
+      priority: type === 'task' ? (parsed.priority || 'today') : null,
       method: 'ai',
     })
   } catch (e) {

@@ -119,6 +119,7 @@ export default function Home() {
         project_id: null as string | null, pending_habit_id: null as string | null,
         habits: [] as { habit_id: string; value: number; note?: string }[],
         tags: [] as string[], method: keywordMatch ? 'keyword' : 'ai',
+        priority: 'today' as string | null,
       }
 
       if (!keywordMatch) {
@@ -154,6 +155,7 @@ export default function Home() {
           content: message, type: routing.type, category_id: routing.category_id,
           project_id: routing.project_id, pending_habit_id: routing.pending_habit_id,
           categorized_by: routing.method, habits: routing.habits, tags: routing.tags,
+          priority: routing.type === 'task' ? (routing.priority || 'today') : null,
         }),
       })
 

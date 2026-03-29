@@ -53,6 +53,9 @@ export function buildRoutingPrompt(
    - task: something the user INTENDS to do but hasn't done yet. Future tense or imperative.
      Also: any message starting with "to-do:", "todo:", or "task:" is ALWAYS a task.
      Examples: "go for a run", "need to email seth", "buy oat milk", "practice piano later", "to-do: book tickets", "task: reply to leo"
+   If the type is "task", also set "priority": "today" or "later".
+   - "later" if the message uses phrases like: "at some point", "eventually", "sometime", "when I get a chance", "one day", "would be nice to", "not urgent"
+   - "today" for everything else (default)
    - habit_entry: something the user HAS ALREADY DONE — a tracked activity in the past tense.
      Examples: "went for a run", "ran 5k", "practiced piano for 30 mins", "worked on graphfm for 2hrs"
    - reflection: thoughts, feelings, observations

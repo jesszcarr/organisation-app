@@ -29,6 +29,7 @@ export async function GET(request: NextRequest) {
   const categoryId = searchParams.get('category_id')
   const projectId = searchParams.get('project_id')
   const type = searchParams.get('type')
+  const priority = searchParams.get('priority')
   const search = searchParams.get('search')
   const date = searchParams.get('date')
   const tag = searchParams.get('tag')
@@ -69,6 +70,7 @@ export async function GET(request: NextRequest) {
     // For tasks, only show uncompleted ones
     if (type === 'task') query = query.is('completed_at', null)
   }
+  if (priority) query = query.eq('priority', priority)
   if (date) query = query.gte('created_at', `${date}T00:00:00`).lt('created_at', `${date}T23:59:59`)
   if (completedDate) {
     query = query.not('completed_at', 'is', null)
@@ -86,7 +88,7 @@ export async function POST(request: NextRequest) {
   if (!user) return NextResponse.json({ error: 'Unauthorised' }, { status: 401 })
 
   const body = await request.json()
-  const { content, type, category_id, project_id, pending_habit_id, categorized_by, habits, tags } = body
+  const { content, type, category_id, project_id, pending_habit_id, categorized_by, habits, tags, priority } = body
 
   const { data: item, error } = await supabase
     .from('items')
@@ -97,6 +99,7 @@ export async function POST(request: NextRequest) {
       project_id: project_id || null,
       pending_habit_id: pending_habit_id || null,
       categorized_by: categorized_by || 'manual',
+      priority: priority || 'today',
       user_id: user.id,
     })
     .select(ITEM_SELECT)
