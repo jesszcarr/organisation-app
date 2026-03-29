@@ -34,6 +34,15 @@ export default function TodosPage() {
     }
   }, [])
 
+  // Refetch when switching back to this tab (e.g. after adding tags in settings)
+  useEffect(() => {
+    function refetch() {
+      if (document.visibilityState === 'visible') loadTodos()
+    }
+    document.addEventListener('visibilitychange', refetch)
+    return () => document.removeEventListener('visibilitychange', refetch)
+  }, [loadTodos])
+
   async function handleComplete(itemId: string) {
     setCompleting((prev) => new Set(prev).add(itemId))
 
