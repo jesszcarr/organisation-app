@@ -109,6 +109,7 @@ export default function Home() {
       id: tempId, user_id: '', content: message, type: 'task',
       category_id: keywordMatch ?? null, project_id: null, pending_habit_id: null, completed_at: null,
       created_at: new Date().toISOString(), categorized_by: keywordMatch ? 'keyword' : 'ai',
+      priority: 'today',
       category: tempCategory,
     }
     setItems((prev) => [optimisticItem, ...prev])
