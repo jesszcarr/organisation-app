@@ -39,6 +39,7 @@ export default function Home() {
     })
   }, [router])
 
+
   const loadData = useCallback(async () => {
     const [itemsRes, catsRes, rulesRes, tagsRes, projRes] = await Promise.all([
       fetch('/api/items'),
@@ -53,6 +54,16 @@ export default function Home() {
     if (tagsRes.ok) setTags(await tagsRes.json())
     if (projRes.ok) setProjects(await projRes.json())
   }, [])
+
+    // Refetch when switching back to this tab (e.g. after adding tags in settings)
+  useEffect(() => {
+    function refetch() {
+      if (document.visibilityState === 'visible') loadData()
+    }
+    document.addEventListener('visibilitychange', refetch)
+    return () => document.removeEventListener('visibilitychange', refetch)
+  }, [loadData])
+
 
   useEffect(() => { bottomRef.current?.scrollIntoView({ behavior: 'smooth' }) }, [items.length])
 
