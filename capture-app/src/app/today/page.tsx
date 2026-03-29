@@ -5,7 +5,9 @@ import { useRouter } from 'next/navigation'
 import { Item, Category, Project, Habit, HabitLog } from '@/types/database'
 import { createClient } from '@/lib/supabase/client'
 import { BottomNav } from '@/components/app/BottomNav'
-import { ChevronLeft, ChevronRight, Eye, EyeOff } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { ChevronLeft, ChevronRight, Eye, EyeOff, X } from 'lucide-react'
 
 function formatDate(date: Date) { return date.toISOString().split('T')[0] }
 
@@ -50,6 +52,7 @@ export default function TodayPage() {
   const [loading, setLoading] = useState(true)
   const [hiddenHabits, setHiddenHabits] = useState<Set<string>>(new Set())
   const [showHabitSettings, setShowHabitSettings] = useState(false)
+  const [numericEdit, setNumericEdit] = useState<{ habitId: string; date: string; value: string } | null>(null)
 
   const dateStr = formatDate(currentDate)
   const weekDates = getWeekDates(currentDate)
@@ -108,6 +111,44 @@ export default function TodayPage() {
       saveHiddenHabits(next)
       return next
     })
+  }
+
+  async function logHabit(habitId: string, date: string, value: number | null) {
+    // Optimistic update
+    if (value === null) {
+      setHabitLogs(prev => prev.filter(l => !(l.habit_id === habitId && l.log_date === date)))
+      await fetch(`/api/habit-logs?habit_id=${habitId}&log_date=${date}`, { method: 'DELETE' })
+    } else {
+      setHabitLogs(prev => {
+        const existing = prev.find(l => l.habit_id === habitId && l.log_date === date)
+        if (existing) return prev.map(l => l.habit_id === habitId && l.log_date === date ? { ...l, value } : l)
+        return [...prev, { id: `temp-${habitId}-${date}`, habit_id: habitId, item_id: null, log_date: date, value, note: null, created_at: new Date().toISOString() }]
+      })
+      await fetch('/api/habit-logs', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ habit_id: habitId, log_date: date, value }),
+      })
+    }
+  }
+
+  function handleCellClick(habit: Habit, date: string) {
+    const val = logLookup[habit.id]?.[date]
+    if (habit.track_type === 'binary') {
+      logHabit(habit.id, date, val !== undefined ? null : 1)
+    } else if (habit.track_type === 'three_level') {
+      const next = val === undefined ? 1 : val === 1 ? 2 : null
+      logHabit(habit.id, date, next)
+    } else {
+      setNumericEdit({ habitId: habit.id, date, value: val !== undefined ? String(val) : '' })
+    }
+  }
+
+  async function submitNumeric() {
+    if (!numericEdit) return
+    const trimmed = numericEdit.value.trim()
+    await logHabit(numericEdit.habitId, numericEdit.date, trimmed === '' || isNaN(parseFloat(trimmed)) ? null : parseFloat(trimmed))
+    setNumericEdit(null)
   }
 
   // Merge created + completed, deduplicate
@@ -239,6 +280,25 @@ export default function TodayPage() {
               </div>
             )}
 
+            {/* Numeric input panel */}
+            {numericEdit && (() => {
+              const habit = habits.find(h => h.id === numericEdit.habitId)
+              const label = new Intl.DateTimeFormat('en-GB', { weekday: 'short', day: 'numeric', month: 'short' }).format(new Date(numericEdit.date + 'T12:00:00'))
+              return (
+                <div className="mb-3 p-3 rounded-lg border bg-muted/30 flex items-center gap-2">
+                  <span className="text-sm flex-1 truncate">{habit?.emoji} {habit?.name} — {label}</span>
+                  <Input type="number" value={numericEdit.value}
+                    onChange={e => setNumericEdit(prev => prev ? { ...prev, value: e.target.value } : null)}
+                    onKeyDown={e => { if (e.key === 'Enter') submitNumeric(); if (e.key === 'Escape') setNumericEdit(null) }}
+                    placeholder={habit?.unit ?? 'value'} className="w-24 h-8 text-sm" autoFocus />
+                  <Button size="sm" onClick={submitNumeric} className="h-8 px-3">Save</Button>
+                  <button onClick={() => setNumericEdit(null)} className="text-muted-foreground hover:text-foreground p-1 shrink-0">
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+              )
+            })()}
+
             {/* Day headers */}
             <div className="flex items-center mb-1">
               <div className="flex-1" />
@@ -290,9 +350,10 @@ export default function TodayPage() {
                     }
 
                     return (
-                      <div key={i} className={`w-7 h-7 rounded-sm flex items-center justify-center text-[10px] ${cellClass}`}>
+                      <button key={i} onClick={() => handleCellClick(habit, ds)}
+                        className={`w-7 h-7 rounded-sm flex items-center justify-center text-[10px] cursor-pointer hover:opacity-75 active:opacity-50 transition-opacity ${cellClass}`}>
                         {cellContent}
-                      </div>
+                      </button>
                     )
                   })}
                 </div>
