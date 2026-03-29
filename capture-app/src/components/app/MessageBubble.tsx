@@ -80,6 +80,11 @@ export function MessageBubble({ item, allTags, allProjects, onDelete, onTagClick
       <div className="flex items-center gap-1.5 px-1 flex-wrap justify-end">
         <span className="text-xs text-muted-foreground opacity-40 group-hover:opacity-100 transition-opacity">{formattedDate}</span>
 
+        {item.type === 'task' && (
+          <Badge variant="secondary" className="text-xs bg-sky-100 text-sky-800 dark:bg-sky-900 dark:text-sky-200">
+            ☐ to-do
+          </Badge>
+        )}
         {item.type && item.type !== 'task' && TYPE_LABELS[item.type] && (
           <Badge variant="outline" className="text-xs px-1.5 py-0">{TYPE_LABELS[item.type]}</Badge>
         )}
@@ -118,11 +123,12 @@ export function MessageBubble({ item, allTags, allProjects, onDelete, onTagClick
                   className="flex items-center gap-2 w-full px-3 py-2 text-sm hover:bg-accent text-left">
                   <Plus className="w-3.5 h-3.5" /> Edit tags
                 </button>
-                <button onClick={makeTask}
-                  className="flex items-center gap-2 w-full px-3 py-2 text-sm hover:bg-accent text-left">
-                  <CheckSquare className="w-3.5 h-3.5" />
-                  {item.type === 'task' ? 'Already a to-do' : 'Make to-do'}
-                </button>
+                {item.type !== 'task' && (
+                  <button onClick={makeTask}
+                    className="flex items-center gap-2 w-full px-3 py-2 text-sm hover:bg-accent text-left">
+                    <CheckSquare className="w-3.5 h-3.5" /> Make to-do
+                  </button>
+                )}
                 <button onClick={() => { setShowProjectPicker(true) }}
                   className="flex items-center gap-2 w-full px-3 py-2 text-sm hover:bg-accent text-left">
                   <FolderOpen className="w-3.5 h-3.5" /> {item.project ? 'Change project' : 'Link to project'}
