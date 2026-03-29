@@ -8,15 +8,82 @@ export interface Category {
   created_at: string
 }
 
+export type ItemType = 'task' | 'reflection' | 'achievement' | 'project_update' | 'link' | 'habit_entry'
+
 export interface Item {
   id: string
   user_id: string
   content: string
-  category_id: string
+  type: ItemType
+  category_id: string | null
+  project_id: string | null
+  pending_habit_id: string | null
+  completed_at: string | null
   created_at: string
   categorized_by: 'keyword' | 'ai' | 'manual'
-  // joined from categories
   category?: Category
+  project?: Project
+  pending_habit?: Habit
+  tags?: Tag[]
+}
+
+export interface Project {
+  id: string
+  user_id: string
+  name: string
+  description: string | null
+  emoji: string
+  status: 'active' | 'paused' | 'done'
+  aliases: string
+  created_at: string
+  updated_at: string
+}
+
+export type LinkType = 'chat' | 'document' | 'repo' | 'other'
+
+export interface ProjectLink {
+  id: string
+  project_id: string
+  url: string
+  title: string
+  link_type: LinkType
+  created_at: string
+}
+
+export interface Tag {
+  id: string
+  user_id: string
+  name: string
+  created_at: string
+}
+
+export interface ItemTag {
+  item_id: string
+  tag_id: string
+}
+
+export type TrackType = 'binary' | 'numeric'
+
+export interface Habit {
+  id: string
+  user_id: string
+  name: string
+  emoji: string
+  track_type: TrackType
+  unit: string | null
+  active: boolean
+  sort_order: number
+  created_at: string
+}
+
+export interface HabitLog {
+  id: string
+  habit_id: string
+  item_id: string | null
+  log_date: string
+  value: number
+  note: string | null
+  created_at: string
 }
 
 export interface KeywordRule {
@@ -24,28 +91,6 @@ export interface KeywordRule {
   user_id: string
   keyword: string
   category_id: string
-}
-
-export interface Database {
-  public: {
-    Tables: {
-      categories: {
-        Row: Category
-        Insert: Omit<Category, 'id' | 'created_at'>
-        Update: Partial<Omit<Category, 'id' | 'user_id' | 'created_at'>>
-      }
-      items: {
-        Row: Item
-        Insert: Omit<Item, 'id' | 'created_at' | 'category'>
-        Update: Partial<Omit<Item, 'id' | 'user_id' | 'created_at' | 'category'>>
-      }
-      keyword_rules: {
-        Row: KeywordRule
-        Insert: Omit<KeywordRule, 'id'>
-        Update: Partial<Omit<KeywordRule, 'id' | 'user_id'>>
-      }
-    }
-  }
 }
 
 export const DEFAULT_CATEGORIES: Omit<Category, 'id' | 'user_id' | 'created_at'>[] = [
@@ -57,4 +102,21 @@ export const DEFAULT_CATEGORIES: Omit<Category, 'id' | 'user_id' | 'created_at'>
   { name: 'Video Game', emoji: '🎮', parent_id: null, sort_order: 5 },
   { name: 'Workouts', emoji: '💪', parent_id: null, sort_order: 6 },
   { name: 'Piano Practice', emoji: '🎹', parent_id: null, sort_order: 7 },
+  { name: 'DiscoverAI', emoji: '🤖', parent_id: null, sort_order: 8 },
+  { name: 'Reflection', emoji: '💭', parent_id: null, sort_order: 9 },
+]
+
+export const DEFAULT_HABITS: Omit<Habit, 'id' | 'user_id' | 'created_at'>[] = [
+  { name: 'Running', emoji: '🏃', track_type: 'numeric', unit: 'km', active: true, sort_order: 0 },
+  { name: 'Gym', emoji: '💪', track_type: 'binary', unit: null, active: true, sort_order: 1 },
+  { name: 'Piano', emoji: '🎹', track_type: 'numeric', unit: 'mins', active: true, sort_order: 2 },
+  { name: 'graphfm', emoji: '📊', track_type: 'numeric', unit: 'hrs', active: true, sort_order: 3 },
+  { name: 'Dev interp', emoji: '📖', track_type: 'numeric', unit: 'hrs', active: true, sort_order: 4 },
+  { name: 'FLAIR/quant', emoji: '📈', track_type: 'numeric', unit: 'hrs', active: true, sort_order: 5 },
+]
+
+export const DEFAULT_PROJECTS: Omit<Project, 'id' | 'user_id' | 'created_at' | 'updated_at'>[] = [
+  { name: 'graphfm', description: 'Graph foundation models for social networks — with Seth, Daniel', emoji: '📊', status: 'active', aliases: 'GF, graphs, graph foundation, seth, daniel, graphpfn' },
+  { name: 'Dev interp', description: 'Developmental interpretability — Fourier features & grokking — with Quentin, Leo', emoji: '📖', status: 'active', aliases: 'DI, dev interp, developmental interpretability, grokking, fourier, leo, quentin, marek, lauren, jace' },
+  { name: 'FLAIR/quant', description: 'SSM/GDN for LOB — with Jakob, Kang', emoji: '📈', status: 'active', aliases: 'FQ, flair, quant, LOB, limit order book, SSM, GDN, jakob, kang' },
 ]

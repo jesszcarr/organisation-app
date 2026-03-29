@@ -1,7 +1,7 @@
 'use client'
 
-import { Category } from '@/types/database'
-import { cn } from '@/lib/utils'
+import { Category } from '../../../src/types/database'
+import { cn } from '../../../src/lib/utils'
 
 interface CategoryFilterProps {
   categories: Category[]
