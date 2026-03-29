@@ -51,12 +51,13 @@ export function buildRoutingPrompt(
 
 1. "type": one of: task, reflection, achievement, project_update, link, habit_entry
    - task: something the user INTENDS to do but hasn't done yet. Future tense or imperative.
-     Examples: "go for a run", "need to email seth", "buy oat milk", "practice piano later"
+     Also: any message starting with "to-do:", "todo:", or "task:" is ALWAYS a task.
+     Examples: "go for a run", "need to email seth", "buy oat milk", "practice piano later", "to-do: book tickets", "task: reply to leo"
    - habit_entry: something the user HAS ALREADY DONE — a tracked activity in the past tense.
      Examples: "went for a run", "ran 5k", "practiced piano for 30 mins", "worked on graphfm for 2hrs"
    - reflection: thoughts, feelings, observations
    - achievement: something accomplished (non-habit)
-   - project_update: progress on or discussion about a research project
+   - project_update: progress on or discussion about a research project. Also: any message starting with "project:" is ALWAYS a project_update.
    - link: a URL or recommendation to save
    CRITICAL: Pay attention to tense. "go for a run" = task. "went for a run" = habit_entry.
    A message can be BOTH a project_update AND contain habit data — use "project_update".
@@ -84,6 +85,7 @@ ${habitList}
 6. "tags": array of tags that apply to this message. ONLY use tags from this list — do not invent new ones:
 [${tagList}]
 Include a tag only if the message is clearly relevant to it.
+Also include any tags that appear as #hashtags in the message (e.g. #leo → "leo"), if they are in the list above.
 
 Reply with ONLY valid JSON.
 

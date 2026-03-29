@@ -129,6 +129,25 @@ export default function Home() {
         if (catRes.ok) routing = await catRes.json()
       }
 
+      // Force task type for explicit to-do/task prefixes — AI can't override this
+      if (/^(to-?do|task)\s*:/i.test(message.trim())) {
+        routing.type = 'task'
+      }
+
+      // Force project_update for explicit project prefix
+      if (/^project\s*:/i.test(message.trim())) {
+        routing.type = 'project_update'
+      }
+
+      // Extract #hashtag tags and merge with AI-assigned tags
+      const hashtagMatches = [...message.matchAll(/#(\w+)/g)].map(m => m[1].toLowerCase())
+      if (hashtagMatches.length > 0) {
+        const matched = tags
+          .filter(t => hashtagMatches.includes(t.name.toLowerCase()))
+          .map(t => t.name)
+        routing.tags = [...new Set([...(routing.tags ?? []), ...matched])]
+      }
+
       const saveRes = await fetch('/api/items', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -254,20 +273,23 @@ export default function Home() {
       {searching && <div className="text-center py-2 text-xs text-muted-foreground">Searching…</div>}
 
       <div className="flex-1 overflow-y-auto">
-        <div className="max-w-2xl mx-auto px-4 py-4 space-y-3">
-          {items.length === 0 && !searching && (
-            <div className="text-center py-16 text-muted-foreground">
-              <div className="text-4xl mb-3">✨</div>
-              <p className="text-sm">
-                {searchQuery ? 'No results found' : selectedCategory ? 'Nothing in this category yet'
-                  : selectedTag ? 'No notes with this tag' : 'Type anything below to get started'}
-              </p>
-            </div>
-          )}
-          {[...items].reverse().map((item) => (
-            <MessageBubble key={item.id} item={item} allTags={tags} allProjects={projects}
-              onDelete={handleDelete} onTagClick={handleTagClick} onTagsUpdate={handleTagsUpdate} onConvert={handleConvert} />
-          ))}
+        <div className="max-w-2xl mx-auto px-4 py-4 flex flex-col min-h-full">
+          <div className="flex-1" />
+          <div className="space-y-3 pb-2">
+            {items.length === 0 && !searching && (
+              <div className="text-center py-16 text-muted-foreground">
+                <div className="text-4xl mb-3">✨</div>
+                <p className="text-sm">
+                  {searchQuery ? 'No results found' : selectedCategory ? 'Nothing in this category yet'
+                    : selectedTag ? 'No notes with this tag' : 'Type anything below to get started'}
+                </p>
+              </div>
+            )}
+            {[...items].reverse().map((item) => (
+              <MessageBubble key={item.id} item={item} allTags={tags} allProjects={projects}
+                onDelete={handleDelete} onTagClick={handleTagClick} onTagsUpdate={handleTagsUpdate} onConvert={handleConvert} />
+            ))}
+          </div>
           <div ref={bottomRef} />
         </div>
       </div>

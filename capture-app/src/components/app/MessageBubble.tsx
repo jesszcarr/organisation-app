@@ -69,7 +69,7 @@ export function MessageBubble({ item, allTags, allProjects, onDelete, onTagClick
     <div className="flex flex-col items-end gap-1 group relative">
       <div className="flex items-start gap-1.5 justify-end w-full">
         <button onClick={() => onDelete(item.id)}
-          className="opacity-0 group-hover:opacity-100 transition-opacity p-1.5 mt-1 text-muted-foreground hover:text-destructive shrink-0" title="Delete">
+          className="opacity-30 group-hover:opacity-100 transition-opacity p-1.5 mt-1 text-muted-foreground hover:text-destructive shrink-0" title="Delete">
           <Trash2 className="w-3.5 h-3.5" />
         </button>
         <div className="max-w-[85%] rounded-2xl rounded-tr-sm bg-primary text-primary-foreground px-4 py-2.5 shadow-sm">
@@ -78,7 +78,7 @@ export function MessageBubble({ item, allTags, allProjects, onDelete, onTagClick
       </div>
 
       <div className="flex items-center gap-1.5 px-1 flex-wrap justify-end">
-        <span className="text-xs text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity">{formattedDate}</span>
+        <span className="text-xs text-muted-foreground opacity-40 group-hover:opacity-100 transition-opacity">{formattedDate}</span>
 
         {item.type && item.type !== 'task' && TYPE_LABELS[item.type] && (
           <Badge variant="outline" className="text-xs px-1.5 py-0">{TYPE_LABELS[item.type]}</Badge>
@@ -108,7 +108,7 @@ export function MessageBubble({ item, allTags, allProjects, onDelete, onTagClick
         {!compact && (
           <div className="relative">
             <button onClick={() => { setShowMenu(!showMenu); setShowTagPicker(false); setShowProjectPicker(false) }}
-              className="opacity-0 group-hover:opacity-100 transition-opacity focus:opacity-100 p-0.5 text-muted-foreground hover:text-foreground">
+              className="opacity-30 group-hover:opacity-100 transition-opacity focus:opacity-100 p-0.5 text-muted-foreground hover:text-foreground">
               <Plus className="w-3.5 h-3.5" />
             </button>
 
