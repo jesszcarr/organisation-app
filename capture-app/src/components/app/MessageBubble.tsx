@@ -61,6 +61,11 @@ export function MessageBubble({ item, allTags, allProjects, onDelete, onTagClick
     setShowMenu(false)
   }
 
+  function removeTask() {
+    onConvert?.(item.id, { type: 'reflection', completed_at: null })
+    setShowMenu(false)
+  }
+
   function linkToProject(projectId: string) {
     onConvert?.(item.id, { project_id: projectId, type: 'project_update' })
     setShowProjectPicker(false)
@@ -165,10 +170,15 @@ export function MessageBubble({ item, allTags, allProjects, onDelete, onTagClick
                   className="flex items-center gap-2 w-full px-3 py-2 text-sm hover:bg-accent text-left">
                   <Plus className="w-3.5 h-3.5" /> Edit tags
                 </button>
-                {item.type !== 'task' && (
+                {item.type !== 'task' ? (
                   <button onClick={makeTask}
                     className="flex items-center gap-2 w-full px-3 py-2 text-sm hover:bg-accent text-left">
                     <CheckSquare className="w-3.5 h-3.5" /> Make to-do
+                  </button>
+                ) : (
+                  <button onClick={removeTask}
+                    className="flex items-center gap-2 w-full px-3 py-2 text-sm hover:bg-accent text-left">
+                    <CheckSquare className="w-3.5 h-3.5" /> Remove to-do
                   </button>
                 )}
                 <button onClick={() => { setShowProjectPicker(true) }}
