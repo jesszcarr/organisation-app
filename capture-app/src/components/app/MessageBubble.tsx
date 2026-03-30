@@ -67,7 +67,9 @@ export function MessageBubble({ item, allTags, allProjects, onDelete, onTagClick
   }
 
   function linkToProject(projectId: string) {
-    onConvert?.(item.id, { project_id: projectId, type: 'project_update' })
+    const updates: Record<string, unknown> = { project_id: projectId || null }
+    if (item.type !== 'task') updates.type = 'project_update'
+    onConvert?.(item.id, updates)
     setShowProjectPicker(false)
     setShowMenu(false)
   }
