@@ -55,11 +55,15 @@ export default function TodayPage() {
   const [numericEdit, setNumericEdit] = useState<{ habitId: string; date: string; value: string } | null>(null)
   const [textEdit, setTextEdit] = useState<{ habitId: string; date: string; value: string } | null>(null)
 
+  const [habitWeekRef, setHabitWeekRef] = useState(new Date())
+
   const dateStr = formatDate(currentDate)
-  const weekDates = getWeekDates(currentDate)
-  const weekFrom = formatDate(weekDates[0])
-  const weekTo = formatDate(weekDates[6])
   const isToday = formatDate(new Date()) === dateStr
+
+  const habitWeekDates = getWeekDates(habitWeekRef)
+  const habitWeekFrom = formatDate(habitWeekDates[0])
+  const habitWeekTo = formatDate(habitWeekDates[6])
+  const isCurrentHabitWeek = habitWeekFrom === formatDate(getWeekDates(new Date())[0])
 
   const displayDate = new Intl.DateTimeFormat('en-GB', { weekday: 'long', month: 'long', day: 'numeric' }).format(currentDate)
 
@@ -72,7 +76,13 @@ export default function TodayPage() {
       if (!user) { router.push('/login'); return }
       loadData()
     })
-  }, [router, dateStr, weekFrom, weekTo])
+  }, [router, dateStr])
+
+  useEffect(() => {
+    fetch(`/api/habit-logs?from=${habitWeekFrom}&to=${habitWeekTo}`)
+      .then(r => r.ok ? r.json() : [])
+      .then(setHabitLogs)
+  }, [habitWeekFrom, habitWeekTo])
 
   // Refetch when switching back to this tab
   useEffect(() => {
@@ -85,17 +95,23 @@ export default function TodayPage() {
 
   async function loadData() {
     setLoading(true)
-    const [createdRes, completedRes, habitsRes, logsRes] = await Promise.all([
+    const [createdRes, completedRes, habitsRes] = await Promise.all([
       fetch(`/api/items?date=${dateStr}`),
       fetch(`/api/items?completed_date=${dateStr}`),
       fetch('/api/habits'),
-      fetch(`/api/habit-logs?from=${weekFrom}&to=${weekTo}`),
     ])
     if (createdRes.ok) setCreatedItems(await createdRes.json())
     if (completedRes.ok) setCompletedItems(await completedRes.json())
     if (habitsRes.ok) setHabits(await habitsRes.json())
-    if (logsRes.ok) setHabitLogs(await logsRes.json())
     setLoading(false)
+  }
+
+  function goHabitWeek(dir: number) {
+    setHabitWeekRef(prev => {
+      const d = new Date(prev)
+      d.setDate(d.getDate() + dir * 7)
+      return d
+    })
   }
 
   function goDay(offset: number) {
@@ -183,12 +199,13 @@ export default function TodayPage() {
   }
 
   function todayValue(habit: Habit): string {
-    const val = logLookup[habit.id]?.[dateStr]
+    const today = formatDate(new Date())
+    const val = logLookup[habit.id]?.[today]
     if (val === undefined) return '—'
     if (habit.track_type === 'binary') return '✓'
     if (habit.track_type === 'three_level') return val === 2 ? '●●' : val === 1 ? '●' : '—'
     if (habit.track_type === 'text') {
-      const note = habitLogs.find(l => l.habit_id === habit.id && l.log_date === dateStr)?.note ?? ''
+      const note = habitLogs.find(l => l.habit_id === habit.id && l.log_date === today)?.note ?? ''
       return note ? (note.length > 14 ? note.slice(0, 13) + '…' : note) : '—'
     }
     return `${val}${habit.unit ?? ''}`
@@ -218,9 +235,19 @@ export default function TodayPage() {
 
           {/* What you did */}
           <section className="px-4 py-4 border-b">
-            <h2 className="text-xs font-medium uppercase tracking-wide text-muted-foreground mb-3">
-              What you did{isToday ? ' today' : ''}
-            </h2>
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-xs font-medium uppercase tracking-wide text-muted-foreground">
+                {isToday ? 'What you did today' : displayDate}
+              </h2>
+              <div className="flex items-center gap-1">
+                <button onClick={() => goDay(-1)} className="p-1 text-muted-foreground hover:text-foreground">
+                  <ChevronLeft className="w-4 h-4" />
+                </button>
+                <button onClick={() => goDay(1)} disabled={isToday} className="p-1 text-muted-foreground hover:text-foreground disabled:opacity-30">
+                  <ChevronRight className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
 
             {loading ? (
               <p className="text-sm text-muted-foreground text-center py-4">Loading…</p>
@@ -343,17 +370,30 @@ export default function TodayPage() {
               )
             })()}
 
-            {/* Day headers */}
+            {/* Day headers + week nav */}
             <div className="flex items-center mb-1">
-              <div className="flex-1" />
+              <div className="flex-1 flex items-center">
+                <button onClick={() => goHabitWeek(-1)} className="p-0.5 text-muted-foreground hover:text-foreground shrink-0">
+                  <ChevronLeft className="w-3.5 h-3.5" />
+                </button>
+                {!isCurrentHabitWeek && (
+                  <span className="text-[10px] text-muted-foreground ml-0.5">
+                    {new Intl.DateTimeFormat('en-GB', { day: 'numeric', month: 'short' }).format(habitWeekDates[0])}
+                  </span>
+                )}
+              </div>
               <div className="flex gap-1">
-                {weekDates.map((d, i) => (
-                  <div key={i} className={`w-7 text-center text-[10px] ${formatDate(d) === dateStr ? 'text-foreground font-medium' : 'text-muted-foreground'}`}>
+                {habitWeekDates.map((d, i) => (
+                  <div key={i} className={`w-7 text-center text-[10px] ${formatDate(d) === formatDate(new Date()) ? 'text-foreground font-medium' : 'text-muted-foreground'}`}>
                     {DAY_NAMES[i]}
                   </div>
                 ))}
               </div>
-              <div className="w-10" />
+              <div className="w-10 flex justify-end">
+                <button onClick={() => goHabitWeek(1)} disabled={isCurrentHabitWeek} className="p-0.5 text-muted-foreground hover:text-foreground disabled:opacity-30 shrink-0">
+                  <ChevronRight className="w-3.5 h-3.5" />
+                </button>
+              </div>
             </div>
 
             {/* Habit rows */}
@@ -361,11 +401,11 @@ export default function TodayPage() {
               <div key={habit.id} className="flex items-center py-1.5">
                 <div className="flex-1 text-sm truncate">{habit.emoji} {habit.name}</div>
                 <div className="flex gap-1">
-                  {weekDates.map((d, i) => {
+                  {habitWeekDates.map((d, i) => {
                     const ds = formatDate(d)
                     const val = logLookup[habit.id]?.[ds]
                     const isDone = val !== undefined
-                    const isCurrent = ds === dateStr
+                    const isCurrent = ds === formatDate(new Date())
                     const isThree = habit.track_type === 'three_level'
 
                     let cellClass: string
