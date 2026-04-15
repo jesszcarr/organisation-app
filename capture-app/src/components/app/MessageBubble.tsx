@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { Item, Category, Project, Tag, Habit } from '@/types/database'
 import { Badge } from '@/components/ui/badge'
-import { Trash2, Plus, Check, CheckSquare, FolderOpen, Pencil } from 'lucide-react'
+import { Trash2, Plus, Check, CheckSquare, FolderOpen, Pencil, Calendar } from 'lucide-react'
 
 interface MessageBubbleProps {
   item: Item & { category?: Category; project?: Project; pending_habit?: Habit; tags?: Tag[] }
@@ -28,6 +28,7 @@ export function MessageBubble({ item, allTags, allProjects, onDelete, onTagClick
   const [showMenu, setShowMenu] = useState(false)
   const [showTagPicker, setShowTagPicker] = useState(false)
   const [showProjectPicker, setShowProjectPicker] = useState(false)
+  const [showDatePicker, setShowDatePicker] = useState(false)
   const [editMode, setEditMode] = useState(false)
   const [editContent, setEditContent] = useState('')
 
@@ -71,6 +72,16 @@ export function MessageBubble({ item, allTags, allProjects, onDelete, onTagClick
     if (item.type !== 'task') updates.type = 'project_update'
     onConvert?.(item.id, updates)
     setShowProjectPicker(false)
+    setShowMenu(false)
+  }
+
+  function changeDate(dateStr: string) {
+    // Preserve the original time, just change the date
+    const original = new Date(item.created_at)
+    const [year, month, day] = dateStr.split('-').map(Number)
+    original.setFullYear(year, month - 1, day)
+    onConvert?.(item.id, { created_at: original.toISOString() })
+    setShowDatePicker(false)
     setShowMenu(false)
   }
 
@@ -146,7 +157,7 @@ export function MessageBubble({ item, allTags, allProjects, onDelete, onTagClick
           </Badge>
         )}
 
-        {itemTags.map((tag) => (
+        {itemTags.filter(t => !item.project || t.name.toLowerCase() !== item.project.name.toLowerCase()).map((tag) => (
           <Badge key={tag.id} variant="outline"
             className="text-xs cursor-pointer hover:bg-accent transition-colors"
             onClick={() => onTagClick?.(tag.name)}>
@@ -157,12 +168,12 @@ export function MessageBubble({ item, allTags, allProjects, onDelete, onTagClick
         {/* Action menu */}
         {!compact && (
           <div className="relative">
-            <button onClick={() => { setShowMenu(!showMenu); setShowTagPicker(false); setShowProjectPicker(false) }}
+            <button onClick={() => { setShowMenu(!showMenu); setShowTagPicker(false); setShowProjectPicker(false); setShowDatePicker(false) }}
               className="opacity-30 group-hover:opacity-100 transition-opacity focus:opacity-100 p-0.5 text-muted-foreground hover:text-foreground">
               <Plus className="w-3.5 h-3.5" />
             </button>
 
-            {showMenu && !showTagPicker && !showProjectPicker && (
+            {showMenu && !showTagPicker && !showProjectPicker && !showDatePicker && (
               <div className="absolute right-0 bottom-6 z-50 w-48 bg-background border rounded-lg shadow-lg py-1">
                 <button onClick={startEdit}
                   className="flex items-center gap-2 w-full px-3 py-2 text-sm hover:bg-accent text-left">
@@ -186,6 +197,10 @@ export function MessageBubble({ item, allTags, allProjects, onDelete, onTagClick
                 <button onClick={() => { setShowProjectPicker(true) }}
                   className="flex items-center gap-2 w-full px-3 py-2 text-sm hover:bg-accent text-left">
                   <FolderOpen className="w-3.5 h-3.5" /> {item.project ? 'Change project' : 'Link to project'}
+                </button>
+                <button onClick={() => { setShowDatePicker(true) }}
+                  className="flex items-center gap-2 w-full px-3 py-2 text-sm hover:bg-accent text-left">
+                  <Calendar className="w-3.5 h-3.5" /> Change date
                 </button>
               </div>
             )}
@@ -221,6 +236,20 @@ export function MessageBubble({ item, allTags, allProjects, onDelete, onTagClick
                     {item.project_id === proj.id && <Check className="w-3.5 h-3.5 text-emerald-500" />}
                   </button>
                 ))}
+              </div>
+            )}
+
+            {showDatePicker && (
+              <div className="absolute right-0 bottom-6 z-50 w-48 bg-background border rounded-lg shadow-lg py-1">
+                <button onClick={() => setShowDatePicker(false)}
+                  className="px-2 py-1.5 text-xs text-muted-foreground hover:text-foreground">&larr; Back</button>
+                <div className="px-2 py-1.5">
+                  <input type="date"
+                    defaultValue={item.created_at.split('T')[0]}
+                    max={new Date().toISOString().split('T')[0]}
+                    onChange={(e) => { if (e.target.value) changeDate(e.target.value) }}
+                    className="w-full text-sm border rounded px-2 py-1.5 bg-background outline-none focus:ring-1 focus:ring-ring" />
+                </div>
               </div>
             )}
           </div>

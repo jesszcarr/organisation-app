@@ -54,6 +54,7 @@ export default function TodayPage() {
   const [showHabitSettings, setShowHabitSettings] = useState(false)
   const [numericEdit, setNumericEdit] = useState<{ habitId: string; date: string; value: string } | null>(null)
   const [textEdit, setTextEdit] = useState<{ habitId: string; date: string; value: string } | null>(null)
+  const [exerciseEdit, setExerciseEdit] = useState<{ habitId: string; date: string; selected: Set<string> } | null>(null)
 
   const [habitWeekRef, setHabitWeekRef] = useState(new Date())
 
@@ -151,6 +152,15 @@ export default function TodayPage() {
 
   function handleCellClick(habit: Habit, date: string) {
     const val = logLookup[habit.id]?.[date]
+    if (habit.exercise_tags?.length > 0) {
+      const existingNote = habitLogs.find(l => l.habit_id === habit.id && l.log_date === date)?.note ?? ''
+      let existing: string[] = []
+      try { existing = existingNote ? JSON.parse(existingNote) : [] } catch { existing = [] }
+      setExerciseEdit({ habitId: habit.id, date, selected: new Set(existing) })
+      setNumericEdit(null)
+      setTextEdit(null)
+      return
+    }
     if (habit.track_type === 'binary') {
       logHabit(habit.id, date, val !== undefined ? null : 1)
     } else if (habit.track_type === 'three_level') {
@@ -171,6 +181,27 @@ export default function TodayPage() {
     const trimmed = numericEdit.value.trim()
     await logHabit(numericEdit.habitId, numericEdit.date, trimmed === '' || isNaN(parseFloat(trimmed)) ? null : parseFloat(trimmed))
     setNumericEdit(null)
+  }
+
+  function toggleExercise(tag: string) {
+    setExerciseEdit(prev => {
+      if (!prev) return null
+      const next = new Set(prev.selected)
+      if (next.has(tag)) next.delete(tag)
+      else next.add(tag)
+      return { ...prev, selected: next }
+    })
+  }
+
+  async function saveExercises() {
+    if (!exerciseEdit) return
+    const tags = [...exerciseEdit.selected]
+    if (tags.length === 0) {
+      await logHabit(exerciseEdit.habitId, exerciseEdit.date, null)
+    } else {
+      await logHabit(exerciseEdit.habitId, exerciseEdit.date, 1, JSON.stringify(tags))
+    }
+    setExerciseEdit(null)
   }
 
   async function submitText() {
@@ -202,6 +233,10 @@ export default function TodayPage() {
     const today = formatDate(new Date())
     const val = logLookup[habit.id]?.[today]
     if (val === undefined) return '—'
+    if (habit.exercise_tags?.length > 0) {
+      const note = habitLogs.find(l => l.habit_id === habit.id && l.log_date === today)?.note ?? ''
+      try { const tags = JSON.parse(note); return `${tags.length}x` } catch { return '✓' }
+    }
     if (habit.track_type === 'binary') return '✓'
     if (habit.track_type === 'three_level') return val === 2 ? '●●' : val === 1 ? '●' : '—'
     if (habit.track_type === 'text') {
@@ -370,6 +405,40 @@ export default function TodayPage() {
               )
             })()}
 
+            {/* Exercise tag picker */}
+            {exerciseEdit && (() => {
+              const habit = habits.find(h => h.id === exerciseEdit.habitId)
+              const label = new Intl.DateTimeFormat('en-GB', { weekday: 'short', day: 'numeric', month: 'short' }).format(new Date(exerciseEdit.date + 'T12:00:00'))
+              return (
+                <div className="mb-3 p-3 rounded-lg border bg-muted/30 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-sm text-muted-foreground">{habit?.emoji} {habit?.name} — {label}</span>
+                    <button onClick={() => setExerciseEdit(null)} className="text-muted-foreground hover:text-foreground p-1 shrink-0">
+                      <X className="w-4 h-4" />
+                    </button>
+                  </div>
+                  <div className="flex flex-wrap gap-1.5">
+                    {(habit?.exercise_tags ?? []).map((tag) => (
+                      <button key={tag} onClick={() => toggleExercise(tag)}
+                        className={`text-xs px-2.5 py-1 rounded-full transition-colors ${
+                          exerciseEdit.selected.has(tag)
+                            ? 'bg-emerald-500 text-white'
+                            : 'bg-muted text-muted-foreground hover:bg-accent'
+                        }`}>
+                        {tag}
+                      </button>
+                    ))}
+                  </div>
+                  <div className="flex gap-2 justify-end">
+                    {logLookup[exerciseEdit.habitId]?.[exerciseEdit.date] !== undefined && (
+                      <Button size="sm" variant="outline" onClick={() => { logHabit(exerciseEdit.habitId, exerciseEdit.date, null); setExerciseEdit(null) }} className="h-7 px-2 text-xs">Clear</Button>
+                    )}
+                    <Button size="sm" onClick={saveExercises} className="h-7 px-3 text-xs">Save</Button>
+                  </div>
+                </div>
+              )
+            })()}
+
             {/* Day headers + week nav */}
             <div className="flex items-center mb-1">
               <div className="flex-1 flex items-center">
@@ -410,8 +479,20 @@ export default function TodayPage() {
 
                     let cellClass: string
                     let cellContent: React.ReactNode
+                    const hasExerciseTags = habit.exercise_tags?.length > 0
 
-                    if (isThree) {
+                    if (hasExerciseTags) {
+                      if (isDone) {
+                        const note = habitLogs.find(l => l.habit_id === habit.id && l.log_date === ds)?.note ?? ''
+                        let count = 0
+                        try { count = JSON.parse(note).length } catch { count = 1 }
+                        cellClass = isCurrent ? 'bg-emerald-500 text-white' : 'bg-emerald-100 dark:bg-emerald-900 text-emerald-700 dark:text-emerald-300'
+                        cellContent = count
+                      } else {
+                        cellClass = isCurrent ? 'border-2 border-muted-foreground/30 bg-background' : 'bg-muted'
+                        cellContent = ''
+                      }
+                    } else if (isThree) {
                       if (val === 2) {
                         cellClass = isCurrent
                           ? 'bg-emerald-600 text-white'
