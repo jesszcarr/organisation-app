@@ -41,6 +41,8 @@ export default function SettingsPage() {
   const [editingHabitId, setEditingHabitId] = useState<string | null>(null)
   const [editingHabitName, setEditingHabitName] = useState('')
   const [editingHabitEmoji, setEditingHabitEmoji] = useState('')
+  const [editingHabitExerciseTags, setEditingHabitExerciseTags] = useState<string[]>([])
+  const [newExerciseTag, setNewExerciseTag] = useState('')
 
   // Edit state — projects
   const [editingProjectId, setEditingProjectId] = useState<string | null>(null)
@@ -170,12 +172,13 @@ export default function SettingsPage() {
     const res = await fetch(`/api/habits/${id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ name: editingHabitName.trim(), emoji: editingHabitEmoji }),
+      body: JSON.stringify({ name: editingHabitName.trim(), emoji: editingHabitEmoji, exercise_tags: editingHabitExerciseTags }),
     })
     if (res.ok) {
       const updated = await res.json()
       setHabits(prev => prev.map(h => h.id === id ? updated : h))
       setEditingHabitId(null)
+      setNewExerciseTag('')
       toast.success('Updated')
     } else toast.error('Failed to update')
   }
@@ -402,17 +405,58 @@ export default function SettingsPage() {
                       <Input value={editingHabitName} onChange={e => setEditingHabitName(e.target.value)} className="flex-1"
                         onKeyDown={e => e.key === 'Enter' && saveHabitEdit(habit.id)} autoFocus />
                     </div>
+                    {/* Exercise choices */}
+                    <div className="space-y-1.5">
+                      <p className="text-xs text-muted-foreground">Choices (shown when tapping in the grid)</p>
+                      <div className="flex flex-wrap gap-1.5">
+                        {editingHabitExerciseTags.map((tag, idx) => (
+                          <span key={idx} className="inline-flex items-center gap-1 text-sm bg-muted px-2.5 py-1 rounded-full">
+                            {tag}
+                            <button onClick={() => setEditingHabitExerciseTags(prev => prev.filter((_, i) => i !== idx))}
+                              className="text-muted-foreground hover:text-destructive ml-0.5">
+                              <X className="w-3 h-3" />
+                            </button>
+                          </span>
+                        ))}
+                      </div>
+                      <div className="flex gap-2">
+                        <Input value={newExerciseTag} onChange={e => setNewExerciseTag(e.target.value)}
+                          placeholder="Add a choice…" className="flex-1 h-8 text-sm"
+                          onKeyDown={e => {
+                            if (e.key === 'Enter' && newExerciseTag.trim()) {
+                              e.preventDefault()
+                              if (!editingHabitExerciseTags.includes(newExerciseTag.trim())) {
+                                setEditingHabitExerciseTags(prev => [...prev, newExerciseTag.trim()])
+                              }
+                              setNewExerciseTag('')
+                            }
+                          }} />
+                        <Button size="sm" variant="outline" className="h-8"
+                          disabled={!newExerciseTag.trim() || editingHabitExerciseTags.includes(newExerciseTag.trim())}
+                          onClick={() => {
+                            if (newExerciseTag.trim() && !editingHabitExerciseTags.includes(newExerciseTag.trim())) {
+                              setEditingHabitExerciseTags(prev => [...prev, newExerciseTag.trim()])
+                            }
+                            setNewExerciseTag('')
+                          }}>
+                          <Plus className="w-3.5 h-3.5" />
+                        </Button>
+                      </div>
+                    </div>
                     <div className="flex gap-2">
                       <Button size="sm" onClick={() => saveHabitEdit(habit.id)} disabled={!editingHabitName.trim()}>Save</Button>
-                      <Button size="sm" variant="outline" onClick={() => setEditingHabitId(null)}>Cancel</Button>
+                      <Button size="sm" variant="outline" onClick={() => { setEditingHabitId(null); setNewExerciseTag('') }}>Cancel</Button>
                     </div>
                   </div>
                 ) : (
                   <div key={habit.id} className="flex items-center justify-between py-2.5 px-3 rounded-lg hover:bg-muted/50">
                     <span className="text-sm">{habit.emoji} {habit.name}</span>
                     <div className="flex items-center gap-1">
+                      {habit.exercise_tags?.length > 0 && (
+                        <span className="text-xs text-muted-foreground mr-1">{habit.exercise_tags.length} choices</span>
+                      )}
                       <span className="text-xs text-muted-foreground mr-1">{trackTypeLabel(habit)}</span>
-                      <button onClick={() => { setEditingHabitId(habit.id); setEditingHabitName(habit.name); setEditingHabitEmoji(habit.emoji) }}
+                      <button onClick={() => { setEditingHabitId(habit.id); setEditingHabitName(habit.name); setEditingHabitEmoji(habit.emoji); setEditingHabitExerciseTags(habit.exercise_tags ?? []); setNewExerciseTag('') }}
                         className="text-muted-foreground hover:text-foreground p-1">
                         <Pencil className="w-3.5 h-3.5" />
                       </button>
